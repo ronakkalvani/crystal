@@ -7,8 +7,7 @@
 
 #include <cuda.h>
 #include <cub/util_allocator.cuh>
-//#include "/csproject/yike/intern/ronak/crystal/cccl/cub/test/test_util.h"
-#include <cub/test/test_util.h>
+#include "/csproject/yike/intern/ronak/crystal/cccl/cub/test/test_util.h"
 #include "/csproject/yike/intern/ronak/crystal/crystal/crystal.cuh"
 
 #include "/csproject/yike/intern/ronak/crystal/src/ops/utils/generator.h"
