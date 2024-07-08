@@ -4,6 +4,11 @@
 #include <iostream>
 #include <stdio.h>
 #include <curand.h>
+#include <curand_kernel.h>
+#include <cub/cub.cuh>
+#include <cmath>
+#include <unordered_set>
+#include <random>
 
 #include <cuda.h>
 #include <cub/util_allocator.cuh>
