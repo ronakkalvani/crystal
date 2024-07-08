@@ -190,8 +190,8 @@ int main()
   // create_relation_pk(h_dim_key, h_dim_val, num_dim);
   // create_relation_fk(h_fact_fkey, h_fact_val, num_fact, num_dim);
 
-  generateUniqueKeys(d_dim_key, mx);
-  generateUniqueKeys(d_fact_fkey, mx);
+  generateUniqueKeys(h_dim_key, mx);
+  generateUniqueKeys(h_fact_fkey, mx);
 
   for (int i = 0; i < num_dim; i++) {
       h_dim_val[i]= rand() % 2455534;
