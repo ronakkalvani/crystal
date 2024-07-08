@@ -122,6 +122,21 @@ TimeKeeper hashJoin(int* d_dim_key, int* d_dim_val, int* d_fact_fkey, int* d_fac
   return t;
 }
 
+void generateUniqueKeys(std::vector<int>& keys, int mx) {
+    std::unordered_set<int> unique_keys;
+    std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<int> dist(1, mx - 1);
+
+    for (int i = 0; i < keys.size(); i++) {
+        int key;
+        do {
+            key = dist(rng);
+        } while (unique_keys.find(key) != unique_keys.end());
+        unique_keys.insert(key);
+        keys[i] = key;
+    }
+}
+
 //---------------------------------------------------------------------
 // Globals, constants and typedefs
 //---------------------------------------------------------------------
@@ -132,9 +147,10 @@ cub::CachingDeviceAllocator  g_allocator(true);  // Caching allocator for device
 
 #define CLEANUP(vec) if(vec)CubDebugExit(g_allocator.DeviceFree(vec))
 
-const int num_fact           = 1e6;
-const int num_dim            = 1e6;
-int num_trials         = 1;
+const int num_fact = 1e6;
+const int num_dim = 1e6;
+const int mx = 1e8;
+int num_trials = 1;
 int h_dim_key[num_dim];
 int h_dim_val[num_dim];
 int h_fact_fkey[num_fact];
@@ -169,17 +185,14 @@ int main()
   // create_relation_pk(h_dim_key, h_dim_val, num_dim);
   // create_relation_fk(h_fact_fkey, h_fact_val, num_fact, num_dim);
 
+  generateUniqueKeys(d_dim_key, mx);
+  generateUniqueKeys(d_fact_fkey, mx);
+
   for (int i = 0; i < num_dim; i++) {
-      h_dim_key[i] = 2 * (num_dim - i + 1);
+      h_dim_val[i]= rand() % 2455534;
   }
   for (int i = 0; i < num_fact; i++) {
-      h_fact_fkey[i] = 3 * (num_fact - i + 1);
-  }
-  for (int i = 0; i < num_dim; i++) {
-      h_dim_val[i]= rand() % 355;
-  }
-  for (int i = 0; i < num_fact; i++) {
-      h_fact_val[i] = 500 + (rand() % 326);
+      h_fact_val[i] = 500 + (rand() % 3225426);
   }
 
   CubDebugExit(cudaMemcpy(d_dim_key, h_dim_key, sizeof(int) * num_dim, cudaMemcpyHostToDevice));
