@@ -149,7 +149,7 @@ void generateUniqueKeys(int* keys, int size, int mx) {
 bool g_verbose = false;  // Whether to display input/output to console
 cub::CachingDeviceAllocator g_allocator(true);  // Caching allocator for device memory
 
-#define CLEANUP(vec) if(vec) CubDebugExit(g_allocator.DeviceFree(vec))
+// #define CLEANUP(vec) if(vec) CubDebugExit(g_allocator.DeviceFree(vec))
 
 const int num_fact = 1e6;
 const int num_dim = 1e6;
