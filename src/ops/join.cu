@@ -9,14 +9,14 @@
 #include <cmath>
 #include <unordered_set>
 #include <random>
+#include <vector>
 
 #include <cuda.h>
 #include <cub/util_allocator.cuh>
-#include "/csproject/yike/intern/ronak/crystal/cccl/cub/test/test_util.h"
-#include "/csproject/yike/intern/ronak/crystal/crystal/crystal.cuh"
-
-#include "/csproject/yike/intern/ronak/crystal/src/ops/utils/generator.h"
-#include "/csproject/yike/intern/ronak/crystal/src/ops/utils/gpu_utils.h"
+#include "test_util.h"
+#include "crystal.cuh"
+#include "generator.h"
+#include "gpu_utils.h"
 
 using namespace std;
 
@@ -24,115 +24,114 @@ using namespace std;
 
 template<int BLOCK_THREADS, int ITEMS_PER_THREAD>
 __global__ void build_kernel(int *dim_key, int *dim_val, int num_tuples, int *hash_table, int num_slots) {
-  int items[ITEMS_PER_THREAD];
-  int items2[ITEMS_PER_THREAD];
-  int selection_flags[ITEMS_PER_THREAD];
+    int items[ITEMS_PER_THREAD];
+    int items2[ITEMS_PER_THREAD];
+    int selection_flags[ITEMS_PER_THREAD];
 
-  int tile_offset = blockIdx.x * TILE_SIZE;
-  int num_tiles = (num_tuples + TILE_SIZE - 1) / TILE_SIZE;
-  int num_tile_items = TILE_SIZE;
+    int tile_offset = blockIdx.x * TILE_SIZE;
+    int num_tiles = (num_tuples + TILE_SIZE - 1) / TILE_SIZE;
+    int num_tile_items = TILE_SIZE;
 
-  if (blockIdx.x == num_tiles - 1) {
-    num_tile_items = num_tuples - tile_offset;
-  }
+    if (blockIdx.x == num_tiles - 1) {
+        num_tile_items = num_tuples - tile_offset;
+    }
 
-  InitFlags<BLOCK_THREADS, ITEMS_PER_THREAD>(selection_flags);
-  BlockLoad<int, BLOCK_THREADS, ITEMS_PER_THREAD>(dim_key + tile_offset, items, num_tile_items);
-  BlockLoad<int, BLOCK_THREADS, ITEMS_PER_THREAD>(dim_val + tile_offset, items2, num_tile_items);
-  BlockBuildSelectivePHT_2<int, int, BLOCK_THREADS, ITEMS_PER_THREAD>(items, items2, selection_flags, 
-      hash_table, num_slots, num_tile_items);
+    InitFlags<BLOCK_THREADS, ITEMS_PER_THREAD>(selection_flags);
+    BlockLoad<int, BLOCK_THREADS, ITEMS_PER_THREAD>(dim_key + tile_offset, items, num_tile_items);
+    BlockLoad<int, BLOCK_THREADS, ITEMS_PER_THREAD>(dim_val + tile_offset, items2, num_tile_items);
+    BlockBuildSelectivePHT_2<int, int, BLOCK_THREADS, ITEMS_PER_THREAD>(items, items2, selection_flags, 
+        hash_table, num_slots, num_tile_items);
 }
 
 template<int BLOCK_THREADS, int ITEMS_PER_THREAD>
 __global__ void probe_kernel(int *fact_fkey, int *fact_val, int num_tuples, 
     int *hash_table, int num_slots, unsigned long long *res) {
-  // Load a tile striped across threads
-  int selection_flags[ITEMS_PER_THREAD];
-  int keys[ITEMS_PER_THREAD];
-  int vals[ITEMS_PER_THREAD];
-  int join_vals[ITEMS_PER_THREAD];
+    // Load a tile striped across threads
+    int selection_flags[ITEMS_PER_THREAD];
+    int keys[ITEMS_PER_THREAD];
+    int vals[ITEMS_PER_THREAD];
+    int join_vals[ITEMS_PER_THREAD];
 
-  unsigned long long sum = 0;
+    unsigned long long sum = 0;
 
-  int tile_offset = blockIdx.x * TILE_SIZE;
-  int num_tiles = (num_tuples+ TILE_SIZE - 1) / TILE_SIZE;
-  int num_tile_items = TILE_SIZE;
+    int tile_offset = blockIdx.x * TILE_SIZE;
+    int num_tiles = (num_tuples + TILE_SIZE - 1) / TILE_SIZE;
+    int num_tile_items = TILE_SIZE;
 
-  if (blockIdx.x == num_tiles - 1) {
-    num_tile_items = num_tuples - tile_offset;
-  }
+    if (blockIdx.x == num_tiles - 1) {
+        num_tile_items = num_tuples - tile_offset;
+    }
 
-  InitFlags<BLOCK_THREADS, ITEMS_PER_THREAD>(selection_flags);
-  BlockLoad<int, BLOCK_THREADS, ITEMS_PER_THREAD>(fact_fkey + tile_offset, keys, num_tile_items);
-  BlockLoad<int, BLOCK_THREADS, ITEMS_PER_THREAD>(fact_val + tile_offset, vals, num_tile_items);
+    InitFlags<BLOCK_THREADS, ITEMS_PER_THREAD>(selection_flags);
+    BlockLoad<int, BLOCK_THREADS, ITEMS_PER_THREAD>(fact_fkey + tile_offset, keys, num_tile_items);
+    BlockLoad<int, BLOCK_THREADS, ITEMS_PER_THREAD>(fact_val + tile_offset, vals, num_tile_items);
 
-  BlockProbeAndPHT_2<int, int, BLOCK_THREADS, ITEMS_PER_THREAD>(keys, join_vals, selection_flags,
-      hash_table, num_slots, num_tile_items);
+    BlockProbeAndPHT_2<int, int, BLOCK_THREADS, ITEMS_PER_THREAD>(keys, join_vals, selection_flags,
+        hash_table, num_slots, num_tile_items);
 
-  #pragma unroll
-  for (int ITEM = 0; ITEM < ITEMS_PER_THREAD; ++ITEM)
-  {
-    if ((threadIdx.x + (BLOCK_THREADS * ITEM) < num_tile_items))
-      if (selection_flags[ITEM])
-        sum += vals[ITEM] * join_vals[ITEM];
-  }
+    #pragma unroll
+    for (int ITEM = 0; ITEM < ITEMS_PER_THREAD; ++ITEM) {
+        if ((threadIdx.x + (BLOCK_THREADS * ITEM) < num_tile_items))
+            if (selection_flags[ITEM])
+                sum += vals[ITEM] * join_vals[ITEM];
+    }
 
-  __syncthreads();
+    __syncthreads();
 
-  static __shared__ long long buffer[32];
-  unsigned long long aggregate = BlockSum<long long, BLOCK_THREADS, ITEMS_PER_THREAD>(sum, (long long*)buffer);
-  __syncthreads();
+    static __shared__ long long buffer[32];
+    unsigned long long aggregate = BlockSum<long long, BLOCK_THREADS, ITEMS_PER_THREAD>(sum, (long long*)buffer);
+    __syncthreads();
 
-  if (threadIdx.x == 0) {
-    atomicAdd(res, aggregate);
-  }
+    if (threadIdx.x == 0) {
+        atomicAdd(res, aggregate);
+    }
 }
 
 struct TimeKeeper {
-  float time_build;
-  float time_probe;
-  float time_extra;
-  float time_total;
+    float time_build;
+    float time_probe;
+    float time_extra;
+    float time_total;
 };
 
 TimeKeeper hashJoin(int* d_dim_key, int* d_dim_val, int* d_fact_fkey, int* d_fact_val, int num_dim, int num_fact, cub::CachingDeviceAllocator&  g_allocator) {
-  SETUP_TIMING();
+    SETUP_TIMING();
 
-  int* hash_table = NULL;
-  unsigned long long* res;
-  int num_slots = num_dim;
-  float time_build, time_probe, time_memset, time_memset2;
+    int* hash_table = NULL;
+    unsigned long long* res;
+    int num_slots = num_dim;
+    float time_build, time_probe, time_memset, time_memset2;
 
-  ALLOCATE(hash_table, sizeof(int) * 2 * num_dim);
-  ALLOCATE(res, sizeof(long long));
+    ALLOCATE(hash_table, sizeof(int) * 2 * num_dim);
+    ALLOCATE(res, sizeof(long long));
 
-  TIME_FUNC(cudaMemset(hash_table, 0, num_slots * sizeof(int) * 2), time_memset);
-  TIME_FUNC(cudaMemset(res, 0, sizeof(long long)), time_memset2);
+    TIME_FUNC(cudaMemset(hash_table, 0, num_slots * sizeof(int) * 2), time_memset);
+    TIME_FUNC(cudaMemset(res, 0, sizeof(long long)), time_memset2);
 
-  int tile_items = 128*4;
+    int tile_items = 128 * 4;
 
-  TIME_FUNC((build_kernel<128, 4><<<(num_dim + tile_items - 1)/tile_items, 128>>>(d_dim_key, d_dim_val, num_dim, hash_table, num_slots)), time_build);
-  TIME_FUNC((probe_kernel<128, 4><<<(num_fact + tile_items - 1)/tile_items, 128>>>(d_fact_fkey, d_fact_val, num_fact, hash_table, num_slots, res)), time_probe);
+    TIME_FUNC((build_kernel<128, 4> <<< (num_dim + tile_items - 1) / tile_items, 128 >>> (d_dim_key, d_dim_val, num_dim, hash_table, num_slots)), time_build);
+    TIME_FUNC((probe_kernel<128, 4> <<< (num_fact + tile_items - 1) / tile_items, 128 >>> (d_fact_fkey, d_fact_val, num_fact, hash_table, num_slots, res)), time_probe);
 
 #if DEBUG
-  cout << "{" << "\"time_memset\":" << time_memset
-      << ",\"time_build\"" << time_build
-      << ",\"time_probe\":" << time_probe << "}" << endl;
+    cout << "{" << "\"time_memset\":" << time_memset
+        << ",\"time_build\":" << time_build
+        << ",\"time_probe\":" << time_probe << "}" << endl;
 #endif
 
-  CLEANUP(hash_table);
-  CLEANUP(res);
+    CLEANUP(hash_table);
+    CLEANUP(res);
 
-  TimeKeeper t = {time_build, time_probe, time_memset, time_build + time_probe + time_memset};
-  return t;
+    TimeKeeper t = {time_build, time_probe, time_memset, time_build + time_probe + time_memset};
+    return t;
 }
 
-void generateUniqueKeys(int* keys, int mx) {
+void generateUniqueKeys(int* keys, int size, int mx) {
     std::unordered_set<int> unique_keys;
     std::mt19937 rng(std::random_device{}());
     std::uniform_int_distribution<int> dist(1, mx - 1);
 
-    for (int i = 0; i < keys.size(); i++) {
+    for (int i = 0; i < size; i++) {
         int key;
         do {
             key = dist(rng);
@@ -146,87 +145,82 @@ void generateUniqueKeys(int* keys, int mx) {
 // Globals, constants and typedefs
 //---------------------------------------------------------------------
 
-bool                    g_verbose = false;  // Whether to display input/output to console
-cub::CachingDeviceAllocator  g_allocator(true);  // Caching allocator for device memory
+bool g_verbose = false;  // Whether to display input/output to console
+cub::CachingDeviceAllocator g_allocator(true);  // Caching allocator for device memory
 
-
-#define CLEANUP(vec) if(vec)CubDebugExit(g_allocator.DeviceFree(vec))
+#define CLEANUP(vec) if(vec) CubDebugExit(g_allocator.DeviceFree(vec))
 
 const int num_fact = 1e6;
 const int num_dim = 1e6;
 const int mx = 1e8;
 int num_trials = 1;
-std::vector<int> h_dim_key(num_dim);
-std::vector<int> h_dim_val(num_dim);
-std::vector<int> h_fact_fkey(num_fact);
-std::vector<int> h_fact_val(num_fact);
 
 //---------------------------------------------------------------------
 // Main
 //---------------------------------------------------------------------
-int main()
-{
+int main() {
+    int log2 = 0;
+    int num_dim_dup = num_dim >> 1;
+    while (num_dim_dup) {
+        num_dim_dup >>= 1;
+        log2 += 1;
+    }
 
-  int log2 = 0;
-  int num_dim_dup = num_dim >> 1;
-  while (num_dim_dup) {
-    num_dim_dup >>= 1;
-    log2 += 1;
-  }
+    // Initialize device
+    // CubDebugExit(args.DeviceInit());
 
-  // Initialize device
-  // CubDebugExit(args.DeviceInit());
+    // Allocate problem device arrays
+    int* d_dim_key = NULL;
+    int* d_dim_val = NULL;
+    int* d_fact_fkey = NULL;
+    int* d_fact_val = NULL;
+    CubDebugExit(g_allocator.DeviceAllocate((void**)&d_dim_key, sizeof(int) * num_dim));
+    CubDebugExit(g_allocator.DeviceAllocate((void**)&d_dim_val, sizeof(int) * num_dim));
+    CubDebugExit(g_allocator.DeviceAllocate((void**)&d_fact_fkey, sizeof(int) * num_fact));
+    CubDebugExit(g_allocator.DeviceAllocate((void**)&d_fact_val, sizeof(int) * num_fact));
 
-  // Allocate problem device arrays
-  int *d_dim_key = NULL;
-  int *d_dim_val = NULL;
-  int *d_fact_fkey = NULL;
-  int *d_fact_val = NULL;
-  CubDebugExit(g_allocator.DeviceAllocate((void**)&d_dim_key, sizeof(int) * num_dim));
-  CubDebugExit(g_allocator.DeviceAllocate((void**)&d_dim_val, sizeof(int) * num_dim));
-  CubDebugExit(g_allocator.DeviceAllocate((void**)&d_fact_fkey, sizeof(int) * num_fact));
-  CubDebugExit(g_allocator.DeviceAllocate((void**)&d_fact_val, sizeof(int) * num_fact));
+    std::vector<int> h_dim_key(num_dim);
+    std::vector<int> h_dim_val(num_dim);
+    std::vector<int> h_fact_fkey(num_fact);
+    std::vector<int> h_fact_val(num_fact);
 
-  // create_relation_pk(h_dim_key, h_dim_val, num_dim);
-  // create_relation_fk(h_fact_fkey, h_fact_val, num_fact, num_dim);
+    generateUniqueKeys(h_dim_key.data(), num_dim, mx);
+    generateUniqueKeys(h_fact_fkey.data(), num_fact, mx);
 
-  generateUniqueKeys(h_dim_key, mx);
-  generateUniqueKeys(h_fact_fkey, mx);
+    for (int i = 0; i < num_dim; i++) {
+        h_dim_val[i] = rand() % 2455534;
+    }
+    for (int i = 0; i < num_fact; i++) {
+        h_fact_val[i] = 500 + (rand() % 3225426);
+    }
 
-  for (int i = 0; i < num_dim; i++) {
-      h_dim_val[i]= rand() % 2455534;
-  }
-  for (int i = 0; i < num_fact; i++) {
-      h_fact_val[i] = 500 + (rand() % 3225426);
-  }
+    CubDebugExit(cudaMemcpy(d_dim_key, h_dim_key.data(), sizeof(int) * num_dim, cudaMemcpyHostToDevice));
+    CubDebugExit(cudaMemcpy(d_dim_val, h_dim_val.data(), sizeof(int) * num_dim, cudaMemcpyHostToDevice));
+    CubDebugExit(cudaMemcpy(d_fact_fkey, h_fact_fkey.data(), sizeof(int) * num_fact, cudaMemcpyHostToDevice));
+    CubDebugExit(cudaMemcpy(d_fact_val, h_fact_val.data(), sizeof(int) * num_fact, cudaMemcpyHostToDevice));
 
-  CubDebugExit(cudaMemcpy(d_dim_key, h_dim_key, sizeof(int) * num_dim, cudaMemcpyHostToDevice));
-  CubDebugExit(cudaMemcpy(d_dim_val, h_dim_val, sizeof(int) * num_dim, cudaMemcpyHostToDevice));
-  CubDebugExit(cudaMemcpy(d_fact_fkey, h_fact_fkey, sizeof(int) * num_fact, cudaMemcpyHostToDevice));
-  CubDebugExit(cudaMemcpy(d_fact_val, h_fact_val, sizeof(int) * num_fact, cudaMemcpyHostToDevice));
+    for (int j = 0; j < num_trials; j++) {
+        TimeKeeper t = hashJoin(d_dim_key, d_dim_val, d_fact_fkey, d_fact_val, num_dim, num_fact, g_allocator);
+        cout << "{"
+            << "\"num_dim\":" << num_dim
+            << ",\"num_fact\":" << num_fact
+            << ",\"radix\":" << 0
+            << ",\"time_partition_build\":" << 0
+            << ",\"time_partition_probe\":" << 0
+            << ",\"time_partition_total\":" << 0
+            << ",\"time_build\":" << t.time_build
+            << ",\"time_probe\":" << t.time_probe
+            << ",\"time_extra\":" << t.time_extra
+            << ",\"time_join_total\":" << t.time_total
+            << "}" << endl;
+    }
 
-  for (int j = 0; j < num_trials; j++) {
-    TimeKeeper t = hashJoin(d_dim_key, d_dim_val, d_fact_fkey, d_fact_val, num_dim, num_fact, g_allocator);
-    cout<< "{"
-        << "\"num_dim\":" << num_dim
-        << ",\"num_fact\":" << num_fact
-        << ",\"radix\":" << 0
-        << ",\"time_partition_build\":" << 0
-        << ",\"time_partition_probe\":" << 0
-        << ",\"time_partition_total\":" << 0
-        << ",\"time_build\":" << t.time_build
-        << ",\"time_probe\":" << t.time_probe
-        << ",\"time_extra\":" << t.time_extra
-        << ",\"time_join_total\":" << t.time_total
-        << "}" << endl;
-  }
+    CLEANUP(d_dim_key);
+    CLEANUP(d_dim_val);
+    CLEANUP(d_fact_fkey);
+    CLEANUP(d_fact_val);
 
-  CLEANUP(d_dim_key);
-  CLEANUP(d_dim_val);
-  CLEANUP(d_fact_fkey);
-  CLEANUP(d_fact_val);
-
-  return 0;
+    return 0;
 }
 
 
