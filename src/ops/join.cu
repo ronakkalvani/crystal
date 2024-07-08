@@ -185,21 +185,21 @@ int main(int argc, char** argv)
   int *h_fact_fkey = NULL;
   int *h_fact_val = NULL;
 
-  // create_relation_pk(h_dim_key, h_dim_val, num_dim);
-  // create_relation_fk(h_fact_fkey, h_fact_val, num_fact, num_dim);
+  create_relation_pk(h_dim_key, h_dim_val, num_dim);
+  create_relation_fk(h_fact_fkey, h_fact_val, num_fact, num_dim);
 
-  for (int i = 0; i < num_dim; i++) {
-      h_dim_key[i] = 2 * (num_dim - i + 1);
-  }
-  for (int i = 0; i < num_fact; i++) {
-      h_fact_fkey[i] = 3 * (num_fact - i + 1);
-  }
-  for (int i = 0; i < num_dim; i++) {
-      h_dim_val[i]= rand() % 355;
-  }
-  for (int i = 0; i < num_fact; i++) {
-      h_fact_val[i] = 500 + (rand() % 326);
-  }
+  // for (int i = 0; i < num_dim; i++) {
+  //     h_dim_key[i] = 2 * (num_dim - i + 1);
+  // }
+  // for (int i = 0; i < num_fact; i++) {
+  //     h_fact_fkey[i] = 3 * (num_fact - i + 1);
+  // }
+  // for (int i = 0; i < num_dim; i++) {
+  //     h_dim_val[i]= rand() % 355;
+  // }
+  // for (int i = 0; i < num_fact; i++) {
+  //     h_fact_val[i] = 500 + (rand() % 326);
+  // }
 
   CubDebugExit(cudaMemcpy(d_dim_key, h_dim_key, sizeof(int) * num_dim, cudaMemcpyHostToDevice));
   CubDebugExit(cudaMemcpy(d_dim_val, h_dim_val, sizeof(int) * num_dim, cudaMemcpyHostToDevice));
