@@ -149,7 +149,7 @@ int main()
   }
 
   // Initialize device
-  CubDebugExit(args.DeviceInit());
+  // CubDebugExit(args.DeviceInit());
 
   // Allocate problem device arrays
   int *d_dim_key = NULL;
