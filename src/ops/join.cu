@@ -156,10 +156,10 @@ const int num_fact = 1e6;
 const int num_dim = 1e6;
 const int mx = 1e8;
 int num_trials = 1;
-int h_dim_key[num_dim];
-int h_dim_val[num_dim];
-int h_fact_fkey[num_fact];
-int h_fact_val[num_fact];
+std::vector<int> h_dim_key(num_dim);
+std::vector<int> h_dim_val(num_dim);
+std::vector<int> h_fact_fkey(num_fact);
+std::vector<int> h_fact_val(num_fact);
 
 //---------------------------------------------------------------------
 // Main
