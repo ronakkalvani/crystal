@@ -13,10 +13,11 @@
 
 #include <cuda.h>
 #include <cub/util_allocator.cuh>
-#include "test_util.h"
-#include "crystal.cuh"
-#include "generator.h"
-#include "gpu_utils.h"
+#include "/csproject/yike/intern/ronak/crystal/cccl/cub/test/test_util.h"
+#include "/csproject/yike/intern/ronak/crystal/crystal/crystal.cuh"
+
+#include "/csproject/yike/intern/ronak/crystal/src/ops/utils/generator.h"
+#include "/csproject/yike/intern/ronak/crystal/src/ops/utils/gpu_utils.h"
 
 using namespace std;
 
