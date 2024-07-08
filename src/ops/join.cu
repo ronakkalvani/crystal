@@ -127,7 +127,7 @@ TimeKeeper hashJoin(int* d_dim_key, int* d_dim_val, int* d_fact_fkey, int* d_fac
   return t;
 }
 
-void generateUniqueKeys(std::vector<int>& keys, int mx) {
+void generateUniqueKeys(int* keys, int mx) {
     std::unordered_set<int> unique_keys;
     std::mt19937 rng(std::random_device{}());
     std::uniform_int_distribution<int> dist(1, mx - 1);
