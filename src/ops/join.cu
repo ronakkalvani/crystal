@@ -135,30 +135,11 @@ cub::CachingDeviceAllocator  g_allocator(true);  // Caching allocator for device
 //---------------------------------------------------------------------
 // Main
 //---------------------------------------------------------------------
-int main(int argc, char** argv)
+int main()
 {
   const int num_fact           = 500;
   const int num_dim            = 500;
   int num_trials         = 1;
-
-  // Initialize command line
-  CommandLineArgs args(argc, argv);
-  args.GetCmdLineArgument("n", num_fact);
-  args.GetCmdLineArgument("d", num_dim);
-  args.GetCmdLineArgument("t", num_trials);
-
-  // Print usage
-  if (args.CheckCmdLineFlag("help"))
-  {
-    printf("%s "
-        "[--n=<num fact>] "
-        "[--d=<num dim>] "
-        "[--t=<num trials>] "
-        "[--device=<device-id>] "
-        "[--v] "
-        "\n", argv[0]);
-    exit(0);
-  }
 
   int log2 = 0;
   int num_dim_dup = num_dim >> 1;
