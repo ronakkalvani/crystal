@@ -137,8 +137,8 @@ cub::CachingDeviceAllocator  g_allocator(true);  // Caching allocator for device
 //---------------------------------------------------------------------
 int main()
 {
-  const int num_fact           = 500;
-  const int num_dim            = 500;
+  const int num_fact           = 1e6;
+  const int num_dim            = 1e6;
   int num_trials         = 1;
 
   int log2 = 0;
