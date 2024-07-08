@@ -180,10 +180,10 @@ int main(int argc, char** argv)
   CubDebugExit(g_allocator.DeviceAllocate((void**)&d_fact_fkey, sizeof(int) * num_fact));
   CubDebugExit(g_allocator.DeviceAllocate((void**)&d_fact_val, sizeof(int) * num_fact));
 
-  int *h_dim_key[num_dim];
-  int *h_dim_val[num_dim];
-  int *h_fact_fkey[num_fact];
-  int *h_fact_val[num_fact];
+  int h_dim_key[num_dim];
+  int h_dim_val[num_dim];
+  int h_fact_fkey[num_fact];
+  int h_fact_val[num_fact];
 
   // create_relation_pk(h_dim_key, h_dim_val, num_dim);
   // create_relation_fk(h_fact_fkey, h_fact_val, num_fact, num_dim);
