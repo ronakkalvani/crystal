@@ -137,8 +137,8 @@ cub::CachingDeviceAllocator  g_allocator(true);  // Caching allocator for device
 //---------------------------------------------------------------------
 int main(int argc, char** argv)
 {
-  int num_fact           = 1e6;
-  int num_dim            = 1e6;
+  int num_fact           = 500;
+  int num_dim            = 500;
   int num_trials         = 1;
 
   // Initialize command line
