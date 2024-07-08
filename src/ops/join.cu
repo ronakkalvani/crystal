@@ -132,14 +132,19 @@ cub::CachingDeviceAllocator  g_allocator(true);  // Caching allocator for device
 
 #define CLEANUP(vec) if(vec)CubDebugExit(g_allocator.DeviceFree(vec))
 
+const int num_fact           = 1e6;
+const int num_dim            = 1e6;
+int num_trials         = 1;
+int h_dim_key[num_dim];
+int h_dim_val[num_dim];
+int h_fact_fkey[num_fact];
+int h_fact_val[num_fact];
+
 //---------------------------------------------------------------------
 // Main
 //---------------------------------------------------------------------
 int main()
 {
-  const int num_fact           = 1e6;
-  const int num_dim            = 1e6;
-  int num_trials         = 1;
 
   int log2 = 0;
   int num_dim_dup = num_dim >> 1;
@@ -160,11 +165,6 @@ int main()
   CubDebugExit(g_allocator.DeviceAllocate((void**)&d_dim_val, sizeof(int) * num_dim));
   CubDebugExit(g_allocator.DeviceAllocate((void**)&d_fact_fkey, sizeof(int) * num_fact));
   CubDebugExit(g_allocator.DeviceAllocate((void**)&d_fact_val, sizeof(int) * num_fact));
-
-  int h_dim_key[num_dim];
-  int h_dim_val[num_dim];
-  int h_fact_fkey[num_fact];
-  int h_fact_val[num_fact];
 
   // create_relation_pk(h_dim_key, h_dim_val, num_dim);
   // create_relation_fk(h_fact_fkey, h_fact_val, num_fact, num_dim);
